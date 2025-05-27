@@ -1,0 +1,10 @@
+<?php
+// Файл: MyProject/admin/includes/admin_footer.php
+?>
+        </main> 
+    </div> 
+    <footer class="admin-footer-bar">
+        <p>&copy; <?php echo date("Y"); ?> Адмін-панель "Buzz"</p>
+    </footer>
+</body>
+</html>

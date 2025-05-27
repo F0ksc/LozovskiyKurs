@@ -1,0 +1,12 @@
+<?php
+// Файл: MyProject/admin/includes/auth_check.php
+if (session_status() === PHP_SESSION_NONE) { // Запускаємо сесію, якщо ще не запущена
+    session_start();
+}
+
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    $_SESSION['login_error'] = "Будь ласка, увійдіть для доступу до адмін-панелі.";
+    header('Location: login.php'); // Перенаправляємо на сторінку входу
+    exit;
+}
+?>

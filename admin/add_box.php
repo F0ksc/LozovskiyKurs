@@ -1,0 +1,103 @@
+<?php
+// Файл: MyProject/admin/add_box.php
+require_once 'includes/admin_header.php'; // Включає auth_check.php та db_connect.php
+
+// Отримуємо список категорій для випадаючого списку
+$categories_sql = "SELECT id, name FROM categories ORDER BY name";
+$categories_result = $conn->query($categories_sql);
+$categories_options = '';
+if ($categories_result && $categories_result->num_rows > 0) {
+    while ($category = $categories_result->fetch_assoc()) {
+        $categories_options .= "<option value=\"" . htmlspecialchars($category['id']) . "\">" . htmlspecialchars($category['name']) . "</option>";
+    }
+}
+
+// Отримуємо список розмірів для випадаючого списку
+$sizes_sql = "SELECT id, name FROM sizes ORDER BY sort_order, name";
+$sizes_result = $conn->query($sizes_sql);
+$sizes_options = '';
+if ($sizes_result && $sizes_result->num_rows > 0) {
+    while ($size = $sizes_result->fetch_assoc()) {
+        $sizes_options .= "<option value=\"" . htmlspecialchars($size['id']) . "\">" . htmlspecialchars($size['name']) . "</option>";
+    }
+}
+
+// Отримуємо дані форми та помилки, якщо вони були передані з box_actions.php
+$form_data = isset($_SESSION['add_box_form_data']) ? $_SESSION['add_box_form_data'] : [];
+$form_errors = isset($_SESSION['add_box_form_errors']) ? $_SESSION['add_box_form_errors'] : [];
+unset($_SESSION['add_box_form_data'], $_SESSION['add_box_form_errors']);
+
+?>
+<h2>Додавання Нового Подарункового Боксу</h2>
+
+<?php if (!empty($form_errors)): ?>
+    <div class="message error">
+        <p><strong>Будь ласка, виправте наступні помилки:</strong></p>
+        <ul>
+            <?php foreach ($form_errors as $error): ?>
+                <li><?php echo htmlspecialchars($error); ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
+
+<form action="box_actions.php" method="post" class="admin-form" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="add">
+
+    <div class="form-group">
+        <label for="box_name">Назва боксу: <span class="required">*</span></label>
+        <input type="text" id="box_name" name="box_name" value="<?php echo htmlspecialchars($form_data['box_name'] ?? ''); ?>" required>
+    </div>
+
+    <div class="form-group">
+        <label for="category_id">Категорія: <span class="required">*</span></label>
+        <select id="category_id" name="category_id" required>
+            <option value="">-- Виберіть категорію --</option>
+            <?php echo $categories_options; ?>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="size_id">Розмір: <span class="required">*</span></label>
+        <select id="size_id" name="size_id" required>
+            <option value="">-- Виберіть розмір --</option>
+            <?php echo $sizes_options; ?>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="description">Детальний опис: <span class="required">*</span></label>
+        <textarea id="description" name="description" rows="5" required><?php echo htmlspecialchars($form_data['description'] ?? ''); ?></textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="contents">Склад набору (перелік сортів тощо): <span class="required">*</span></label>
+        <textarea id="contents" name="contents" rows="5" required><?php echo htmlspecialchars($form_data['contents'] ?? ''); ?></textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="price">Ціна (грн): <span class="required">*</span></label>
+        <input type="number" id="price" name="price" step="0.01" min="0" value="<?php echo htmlspecialchars($form_data['price'] ?? ''); ?>" required>
+    </div>
+
+    <div class="form-group">
+        <label for="image_url">URL зображення (наприклад, images/box_name.jpg):</label>
+        <input type="text" id="image_url" name="image_url" value="<?php echo htmlspecialchars($form_data['image_url'] ?? ''); ?>" placeholder="images/example.jpg">
+   </div>
+    
+    <div class="form-group">
+        <label for="is_active">Активний (видимий на сайті):</label>
+        <input type="checkbox" id="is_active" name="is_active" value="1" <?php echo (isset($form_data['is_active']) && $form_data['is_active'] == '1') || !isset($form_data['is_active']) ? 'checked' : ''; ?>>
+
+    </div>
+
+    <p><span class="required">*</span> - обов'язкові поля.</p>
+
+    <button type="submit" class="button">Додати Бокс</button>
+    <a href="manage_boxes.php" class="button-secondary" style="margin-left: 10px;">Скасувати</a>
+</form>
+
+<?php
+$conn->close(); // Закриваємо з'єднання, оскільки воно більше не потрібне на цій сторінці
+require_once 'includes/admin_footer.php';
+?>

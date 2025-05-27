@@ -1,0 +1,146 @@
+<?php
+// Файл: MyProject/admin/edit_box.php
+require_once 'includes/admin_header.php'; // Включає auth_check.php та db_connect.php
+
+// Перевіряємо, чи передано ID боксу для редагування
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    $_SESSION['box_action_error'] = "Неправильний ID боксу для редагування.";
+    header('Location: manage_boxes.php');
+    exit;
+}
+$box_id_to_edit = intval($_GET['id']);
+
+// Отримуємо дані боксу з БД
+$box_sql = "SELECT * FROM boxes WHERE id = ?";
+if ($stmt_box = $conn->prepare($box_sql)) {
+    $stmt_box->bind_param("i", $box_id_to_edit);
+    $stmt_box->execute();
+    $box_result = $stmt_box->get_result();
+    if ($box_result->num_rows === 1) {
+        $box_data = $box_result->fetch_assoc();
+    } else {
+        $_SESSION['box_action_error'] = "Бокс з ID " . $box_id_to_edit . " не знайдено.";
+        header('Location: manage_boxes.php');
+        exit;
+    }
+    $stmt_box->close();
+} else {
+    $_SESSION['box_action_error'] = "Помилка підготовки запиту для отримання даних боксу: " . $conn->error;
+    header('Location: manage_boxes.php');
+    exit;
+}
+
+
+// Отримуємо список категорій для випадаючого списку
+$categories_sql = "SELECT id, name FROM categories ORDER BY name";
+$categories_result = $conn->query($categories_sql);
+$categories_options = '';
+if ($categories_result && $categories_result->num_rows > 0) {
+    while ($category = $categories_result->fetch_assoc()) {
+        $selected = ($category['id'] == $box_data['category_id']) ? 'selected' : '';
+        $categories_options .= "<option value=\"" . htmlspecialchars($category['id']) . "\" $selected>" . htmlspecialchars($category['name']) . "</option>";
+    }
+}
+
+// Отримуємо список розмірів для випадаючого списку
+$sizes_sql = "SELECT id, name FROM sizes ORDER BY sort_order, name";
+$sizes_result = $conn->query($sizes_sql);
+$sizes_options = '';
+if ($sizes_result && $sizes_result->num_rows > 0) {
+    while ($size = $sizes_result->fetch_assoc()) {
+        $selected = ($size['id'] == $box_data['size_id']) ? 'selected' : '';
+        $sizes_options .= "<option value=\"" . htmlspecialchars($size['id']) . "\" $selected>" . htmlspecialchars($size['name']) . "</option>";
+    }
+}
+
+// Отримуємо дані форми та помилки, якщо вони були передані з box_actions.php (після невдалої спроби оновлення)
+// Якщо дані є в сесії (невдала спроба), використовуємо їх, інакше - дані з БД
+$form_data_name = isset($_SESSION['edit_box_form_data']['box_name']) ? $_SESSION['edit_box_form_data']['box_name'] : $box_data['name'];
+$form_data_category_id = isset($_SESSION['edit_box_form_data']['category_id']) ? $_SESSION['edit_box_form_data']['category_id'] : $box_data['category_id'];
+$form_data_size_id = isset($_SESSION['edit_box_form_data']['size_id']) ? $_SESSION['edit_box_form_data']['size_id'] : $box_data['size_id'];
+$form_data_description = isset($_SESSION['edit_box_form_data']['description']) ? $_SESSION['edit_box_form_data']['description'] : $box_data['description'];
+$form_data_contents = isset($_SESSION['edit_box_form_data']['contents']) ? $_SESSION['edit_box_form_data']['contents'] : $box_data['contents'];
+$form_data_price = isset($_SESSION['edit_box_form_data']['price']) ? $_SESSION['edit_box_form_data']['price'] : $box_data['price'];
+$form_data_image_url = isset($_SESSION['edit_box_form_data']['image_url']) ? $_SESSION['edit_box_form_data']['image_url'] : $box_data['image_url'];
+// Для чекбокса is_active: якщо є дані сесії, беремо їх, інакше - з БД. Якщо сесії немає і в БД немає, то за замовчуванням false (0)
+$form_data_is_active_session = isset($_SESSION['edit_box_form_data']['is_active']) ? $_SESSION['edit_box_form_data']['is_active'] : null;
+$form_data_is_active = ($form_data_is_active_session !== null) ? $form_data_is_active_session : $box_data['is_active'];
+
+
+$form_errors = isset($_SESSION['edit_box_form_errors']) ? $_SESSION['edit_box_form_errors'] : [];
+unset($_SESSION['edit_box_form_data'], $_SESSION['edit_box_form_errors']);
+
+?>
+<h2>Редагування Подарункового Боксу: <?php echo htmlspecialchars($box_data['name']); ?></h2>
+
+<?php if (!empty($form_errors)): ?>
+    <div class="message error">
+        <p><strong>Будь ласка, виправте наступні помилки:</strong></p>
+        <ul>
+            <?php foreach ($form_errors as $error): ?>
+                <li><?php echo htmlspecialchars($error); ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>
+
+<form action="box_actions.php" method="post" class="admin-form" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="edit">
+    <input type="hidden" name="box_id" value="<?php echo $box_id_to_edit; ?>">
+
+    <div class="form-group">
+        <label for="box_name">Назва боксу: <span class="required">*</span></label>
+        <input type="text" id="box_name" name="box_name" value="<?php echo htmlspecialchars($form_data_name); ?>" required>
+    </div>
+
+    <div class="form-group">
+        <label for="category_id">Категорія: <span class="required">*</span></label>
+        <select id="category_id" name="category_id" required>
+            <option value="">-- Виберіть категорію --</option>
+            <?php echo $categories_options; // Опції вже містять selected на основі $box_data ?>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="size_id">Розмір: <span class="required">*</span></label>
+        <select id="size_id" name="size_id" required>
+            <option value="">-- Виберіть розмір --</option>
+            <?php echo $sizes_options; // Опції вже містять selected на основі $box_data ?>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="description">Детальний опис: <span class="required">*</span></label>
+        <textarea id="description" name="description" rows="5" required><?php echo htmlspecialchars($form_data_description); ?></textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="contents">Склад набору (перелік сортів тощо): <span class="required">*</span></label>
+        <textarea id="contents" name="contents" rows="5" required><?php echo htmlspecialchars($form_data_contents); ?></textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="price">Ціна (грн): <span class="required">*</span></label>
+        <input type="number" id="price" name="price" step="0.01" min="0" value="<?php echo htmlspecialchars($form_data_price); ?>" required>
+    </div>
+
+    <div class="form-group">
+        <label for="image_url">URL зображення (наприклад, images/box_name.jpg):</label>
+        <input type="text" id="image_url" name="image_url" value="<?php echo htmlspecialchars($form_data_image_url ?? ''); ?>" placeholder="images/example.jpg">
+    </div>
+    
+    <div class="form-group">
+        <label for="is_active">Активний (видимий на сайті):</label>
+        <input type="checkbox" id="is_active" name="is_active" value="1" <?php echo ($form_data_is_active == 1) ? 'checked' : ''; ?>>
+    </div>
+
+    <p><span class="required">*</span> - обов'язкові поля.</p>
+
+    <button type="submit" class="button">Зберегти Зміни</button>
+    <a href="manage_boxes.php" class="button-secondary" style="margin-left: 10px;">Скасувати</a>
+</form>
+
+<?php
+$conn->close();
+require_once 'includes/admin_footer.php';
+?>
