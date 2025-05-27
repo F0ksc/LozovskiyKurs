@@ -1,0 +1,9 @@
+<div id="ageVerificationModal" class="modal">
+    <div class="modal-content">
+        <h2>Підтвердження віку</h2>
+        <p>Цей сайт містить інформацію про алкогольні напої. Будь ласка, підтвердіть, що вам виповнилося 18 років.</p>
+        <p>Надмірне споживання алкоголю шкідливе для вашого здоров'я.</p>
+        <button id="ageConfirmYes">Так, мені є 18 років</button>
+        <button id="ageConfirmNo">Ні, мені немає 18 років</button>
+    </div>
+</div>
